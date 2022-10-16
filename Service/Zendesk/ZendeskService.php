@@ -1,39 +1,23 @@
 <?php
 
-namespace MobilityWork\Service;
+namespace MobilityWork\Service\Zendesk;
 
+use MobilityWork\Model\Hotel\HotelInterface;
+use MobilityWork\Model\LanguageInterface;
 use Zendesk\API\HttpClient as ZendeskAPI;
 
-class ZendeskService extends AbstractService
+class ZendeskService implements ZendeskServiceInterface
 {
-    
-    const PRODUCTION_SECRET_TOKEN = '7a960781b588403ca32116048238d01c';
-
-    /**
-     * @param string $gender
-     * @param string $firstName
-     * @param string $lastName
-     * @param string $phoneNumber
-     * @param string $email
-     * @param string $message
-     * @param string $reservationNumber
-     * @param \MobilityWork\Entity\Hotel $hotel
-     * @param \MobilityWork\Entity\Language $language
-     * @param \MobilityWork\Entity\DomainConfig $domainConfig
-     *
-     * @return boolean
-     */
     public function createCustomerTicket(
-        $gender,
-        $firstName,
-        $lastName,
-        $phoneNumber,
-        $email,
-        $message,
-        $reservationNumber,
-        $hotel,
-        $language,
-        $domainConfig)
+        string $firstName,
+        string $lastName,
+        string $phoneNumber,
+        string $email,
+        string $message,
+        string $reservationNumber,
+        HotelInterface $hotel,
+        LanguageInterface $language
+    ): void
     {
         $reservation = null;
 
@@ -62,7 +46,7 @@ class ZendeskService extends AbstractService
             $roomName = $reservation->getRoom()->getName() . ' ('.$reservation->getRoom()->getType().')';
             $customFields['80531287'] = $roomName;
             $customFields['80531307'] = $reservation->getBookedDate()->format('Y-m-d');
-            $customFields['80924568'] = $reservation->getRoomPrice().' '.$reservation->getHotel()->getCurrency()->getCode();
+            $customFields['80924568'] = $reservation->getRoomPrice() . ' ZendeskService.php' .$reservation->getHotel()->getCurrency()->getCode();
             $customFields['80918728'] = $reservation->getBookedStartTime()->format('H:i').' - '.$reservation->getBookedEndTime()->format('H:i');
         }
 
@@ -83,8 +67,6 @@ class ZendeskService extends AbstractService
             ]
         );
 
-        //$this->getLogger()->addError(var_export($endUser, true));
-
         $client->tickets()->create(
             [
                 'requester_id' => $response->user->id,
@@ -99,24 +81,19 @@ class ZendeskService extends AbstractService
                 'custom_fields' => $customFields
             ]
         );
-
-        return true;
     }
 
     public function createHotelTicket(
-        $gender,
-        $firstName,
-        $lastName,
-        $country,
-        $phoneNumber,
-        $email,
-        $city,
-        $website,
-        $hotelName,
-        $subject,
-        $message,
-        $language,
-        $domainConfig)
+        string $firstName,
+        string $lastName,
+        string $phoneNumber,
+        string $email,
+        string $city,
+        string  $website,
+        string $hotelName,
+        string $message,
+        LanguageInterface $language
+    ): void
     {
         $customFields = [];
         $customFields['80924888'] = 'hotel';
@@ -157,23 +134,18 @@ class ZendeskService extends AbstractService
                 'custom_fields' => $customFields
             ]
         );
-
-        return true;
     }
 
     public function createPressTicket(
-        $gender,
-        $firstName,
-        $lastName,
-        $country,
-        $phoneNumber,
-        $email,
-        $city,
-        $media,
-        $subject,
-        $message,
-        $language,
-        $domainConfig)
+        string $firstName,
+        string $lastName,
+        string $phoneNumber,
+        string $email,
+        string $city,
+        string $media,
+        string $message,
+        LanguageInterface $language
+    ): void
     {
         $customFields = [];
         $customFields['80924888'] = 'press';
@@ -217,19 +189,16 @@ class ZendeskService extends AbstractService
         } catch (\Exception $e) {
             $this->getLogger()->addError(var_export($response->user->id, true));
         }
-
-        return true;
     }
 
     public function createPartnersTicket(
-        $gender,
-        $firstName,
-        $lastName,
-        $phoneNumber,
-        $email,
-        $message,
-        $language,
-        $domainConfig)
+        string $firstName,
+        string $lastName,
+        string $phoneNumber,
+        string $email,
+        string $message,
+        LanguageInterface $language
+    ): void
     {
         $customFields = [];
         $customFields['80924888'] = 'partner';
@@ -267,7 +236,5 @@ class ZendeskService extends AbstractService
                 'custom_fields' => $customFields
             ]
         );
-
-        return true;
     }
 }
