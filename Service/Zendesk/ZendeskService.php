@@ -6,9 +6,11 @@ use Exception;
 use MobilityWork\Exception\NotFoundException;
 use MobilityWork\Lib\LoggerInterface;
 use MobilityWork\Model\Booking\ReservationInterface;
+use MobilityWork\Model\Hotel\HotelContactInterface;
 use MobilityWork\Model\Hotel\HotelInterface;
 use MobilityWork\Model\LanguageInterface;
 use MobilityWork\Repository\Reservation\ReservationRepositoryInterface;
+use MobilityWork\Service\HotelContacts\HotelContactsServiceInterface;
 use Zendesk\API\HttpClient as ZendeskAPI;
 
 class ZendeskService implements ZendeskServiceInterface
@@ -16,6 +18,7 @@ class ZendeskService implements ZendeskServiceInterface
     public function __construct(
         private readonly ReservationRepositoryInterface $reservationRepository,
         private readonly LoggerInterface                $logger,
+        private readonly HotelContactsServiceInterface  $hotelContactsService,
     ) {}
 
     public function createCustomerTicket(
@@ -44,7 +47,7 @@ class ZendeskService implements ZendeskServiceInterface
         $customFields['80531327'] = $reservationNumber;
 
         if ($hotel != null) {
-            $hotelContact = $this->getServiceManager()->get('service.hotel_contacts')->getMainHotelContact($hotel);
+            $hotelContact = $this->getHotelContactOrNull($hotel);
             $customFields['80531267'] = $hotelContact != null ? $hotelContact->getEmail() : null;
             $customFields['80918668'] = $hotel->getName();
             $customFields['80918648'] = $hotel->getAddress();
@@ -265,5 +268,20 @@ class ZendeskService implements ZendeskServiceInterface
         }
 
         return $reservation;
+    }
+
+    private function getHotelContactOrNull(HotelInterface $hotel): ?HotelContactInterface
+    {
+        try {
+            return $this->hotelContactsService->getMainHotelContact($hotel);
+        } catch (Exception $e) {
+            $message = sprintf(
+                'Get hotel %s contact has failed. Previous: %s',
+                $hotel->getName(),
+                $e->getMessage()
+            );
+            $this->logger->addError($message);
+            throw new ZendeskServiceException($message);
+        }
     }
 }
