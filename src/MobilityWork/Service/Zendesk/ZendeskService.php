@@ -17,6 +17,7 @@ use MobilityWork\Model\Security\UserInterface;
 use MobilityWork\Model\Security\UserModel;
 use MobilityWork\Repository\Reservation\ReservationRepositoryInterface;
 use MobilityWork\Service\HotelContacts\HotelContactsServiceInterface;
+use MobilityWork\ValueObject\CustomFieldsValueObject;
 
 class ZendeskService implements ZendeskServiceInterface
 {
@@ -46,25 +47,25 @@ class ZendeskService implements ZendeskServiceInterface
         }
 
         $customFields = [];
-        $customFields['80924888'] = 'customer';
-        $customFields['80531327'] = $reservationNumber;
+        $customFields[CustomFieldsValueObject::$type] = 'customer';
+        $customFields[CustomFieldsValueObject::$reservationNumber] = $reservationNumber;
 
         if ($hotel != null) {
             $hotelContact = $this->getHotelContactOrNull($hotel);
-            $customFields['80531267'] = $hotelContact?->getEmail();
-            $customFields['80918668'] = $hotel->getName();
-            $customFields['80918648'] = $hotel->getAddress();
+            $customFields[CustomFieldsValueObject::$hotelEmail] = $hotelContact?->getEmail();
+            $customFields[CustomFieldsValueObject::$hotelName] = $hotel->getName();
+            $customFields[CustomFieldsValueObject::$hotelAddress] = $hotel->getAddress();
         }
 
         if ($reservation != null) {
             $roomName = $reservation->getRoom()->getName() . ' ('.$reservation->getRoom()->getType().')';
-            $customFields['80531287'] = $roomName;
-            $customFields['80531307'] = $reservation->getBookedDate()->format('Y-m-d');
-            $customFields['80924568'] = $reservation->getRoomPrice() . ' ZendeskService.php' .$reservation->getHotel()->getCurrency()->getCode();
-            $customFields['80918728'] = $reservation->getBookedStartTime()->format('H:i').' - '.$reservation->getBookedEndTime()->format('H:i');
+            $customFields[CustomFieldsValueObject::$roomName] = $roomName;
+            $customFields[CustomFieldsValueObject::$bookedDate] = $reservation->getBookedDate()->format('Y-m-d');
+            $customFields[CustomFieldsValueObject::$roomPrice] = $reservation->getRoomPrice() . ' ZendeskService.php' .$reservation->getHotel()->getCurrency()->getCode();
+            $customFields[CustomFieldsValueObject::$bookingDates] = $reservation->getBookedStartTime()->format('H:i').' - '.$reservation->getBookedEndTime()->format('H:i');
         }
 
-        $customFields['80918708'] = $language->getName();
+        $customFields[CustomFieldsValueObject::$language] = $language->getName();
 
         $this->createATicket([
             'requester_id' => $user->getId(),
@@ -89,10 +90,10 @@ class ZendeskService implements ZendeskServiceInterface
     ): void
     {
         $customFields = [];
-        $customFields['80924888'] = 'hotel';
-        $customFields['80918668'] = $hotelName;
-        $customFields['80918648'] = $city;
-        $customFields['80918708'] = $language->getName();
+        $customFields[CustomFieldsValueObject::$type] = 'hotel';
+        $customFields[CustomFieldsValueObject::$hotelName] = $hotelName;
+        $customFields[CustomFieldsValueObject::$hotelCity] = $city;
+        $customFields[CustomFieldsValueObject::$language] = $language->getName();
 
         $this->createATicket([
             'requester_id' => $user->getId(),
@@ -116,9 +117,9 @@ class ZendeskService implements ZendeskServiceInterface
     ): void
     {
         $customFields = [];
-        $customFields['80924888'] = 'press';
-        $customFields['80918648'] = $city;
-        $customFields['80918708'] = $language->getName();
+        $customFields[CustomFieldsValueObject::$type] = 'press';
+        $customFields[CustomFieldsValueObject::$hotelCity] = $city;
+        $customFields[CustomFieldsValueObject::$language] = $language->getName();
 
         $this->createATicket([
             'requester_id' => $user->getId(),
@@ -141,8 +142,8 @@ class ZendeskService implements ZendeskServiceInterface
     ): void
     {
         $customFields = [];
-        $customFields['80924888'] = 'partner';
-        $customFields['80918708'] = $language->getName();
+        $customFields[CustomFieldsValueObject::$type] = 'partner';
+        $customFields[CustomFieldsValueObject::$language] = $language->getName();
 
         $this->createATicket([
             'requester_id' => $user->getId(),
