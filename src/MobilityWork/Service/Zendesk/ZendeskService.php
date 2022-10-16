@@ -4,9 +4,11 @@ namespace MobilityWork\Service\Zendesk;
 
 use DomainException;
 use Exception;
+use MobilityWork\Builder\CustomFields\CustomFieldsBuilderInterface;
 use MobilityWork\Client\Http\Zendesk\Strategy\TicketStrategy;
 use MobilityWork\Client\Http\Zendesk\Strategy\UserStrategy;
 use MobilityWork\Client\Http\Zendesk\ZendeskHttpClientInterface;
+use MobilityWork\Enum\CustomFieldTypeEnum;
 use MobilityWork\Exception\NotFoundException;
 use MobilityWork\Lib\LoggerInterface;
 use MobilityWork\Model\Booking\ReservationInterface;
@@ -17,7 +19,6 @@ use MobilityWork\Model\Security\UserInterface;
 use MobilityWork\Model\Security\UserModel;
 use MobilityWork\Repository\Reservation\ReservationRepositoryInterface;
 use MobilityWork\Service\HotelContacts\HotelContactsServiceInterface;
-use MobilityWork\ValueObject\CustomFieldsValueObject;
 
 class ZendeskService implements ZendeskServiceInterface
 {
@@ -26,6 +27,7 @@ class ZendeskService implements ZendeskServiceInterface
         private readonly LoggerInterface                $logger,
         private readonly HotelContactsServiceInterface  $hotelContactsService,
         private readonly ZendeskHttpClientInterface     $client,
+        private readonly CustomFieldsBuilderInterface   $customFieldsBuilder
     ) {}
 
     public function createCustomerTicket(
@@ -46,26 +48,31 @@ class ZendeskService implements ZendeskServiceInterface
             }
         }
 
-        $customFields = [];
-        $customFields[CustomFieldsValueObject::$type] = 'customer';
-        $customFields[CustomFieldsValueObject::$reservationNumber] = $reservationNumber;
+        $customFieldsBuilder = $this->customFieldsBuilder
+            ->init()
+            ->addType(CustomFieldTypeEnum::Customer)
+            ->addLanguage($language->getName())
+            ->addReservationNumber($reservationNumber)
+        ;
 
         if ($hotel != null) {
             $hotelContact = $this->getHotelContactOrNull($hotel);
-            $customFields[CustomFieldsValueObject::$hotelEmail] = $hotelContact?->getEmail();
-            $customFields[CustomFieldsValueObject::$hotelName] = $hotel->getName();
-            $customFields[CustomFieldsValueObject::$hotelAddress] = $hotel->getAddress();
+            $customFieldsBuilder
+                ->addHotelEmail($hotelContact?->getEmail())
+                ->addHotelName($hotel->getName())
+                ->addHotelAddress($hotel->getAddress())
+            ;
         }
 
         if ($reservation != null) {
             $roomName = $reservation->getRoom()->getName() . ' ('.$reservation->getRoom()->getType().')';
-            $customFields[CustomFieldsValueObject::$roomName] = $roomName;
-            $customFields[CustomFieldsValueObject::$bookedDate] = $reservation->getBookedDate()->format('Y-m-d');
-            $customFields[CustomFieldsValueObject::$roomPrice] = $reservation->getRoomPrice() . ' ZendeskService.php' .$reservation->getHotel()->getCurrency()->getCode();
-            $customFields[CustomFieldsValueObject::$bookingDates] = $reservation->getBookedStartTime()->format('H:i').' - '.$reservation->getBookedEndTime()->format('H:i');
+            $customFieldsBuilder
+                ->addRoomName($roomName)
+                ->addRoomPrice($reservation->getRoomPrice() . ' ZendeskService.php' .$reservation->getHotel()->getCurrency()->getCode())
+                ->addBookedDate($reservation->getBookedDate()->format('Y-m-d'))
+                ->addBookingDates($reservation->getBookedStartTime()->format('H:i').' - '.$reservation->getBookedEndTime()->format('H:i'))
+            ;
         }
-
-        $customFields[CustomFieldsValueObject::$language] = $language->getName();
 
         $this->createATicket([
             'requester_id' => $user->getId(),
@@ -77,7 +84,7 @@ class ZendeskService implements ZendeskServiceInterface
             'priority'      => 'normal',
             'type'          => 'question',
             'status'        => 'new',
-            'custom_fields' => $customFields
+            'custom_fields' => $customFieldsBuilder->build()
         ]);
     }
 
@@ -89,11 +96,14 @@ class ZendeskService implements ZendeskServiceInterface
         string $message
     ): void
     {
-        $customFields = [];
-        $customFields[CustomFieldsValueObject::$type] = 'hotel';
-        $customFields[CustomFieldsValueObject::$hotelName] = $hotelName;
-        $customFields[CustomFieldsValueObject::$hotelCity] = $city;
-        $customFields[CustomFieldsValueObject::$language] = $language->getName();
+        $customFields = $this->customFieldsBuilder
+            ->init()
+            ->addType(CustomFieldTypeEnum::Hotel)
+            ->addLanguage($language->getName())
+            ->addHotelName($hotelName)
+            ->addHotelCity($city)
+            ->build()
+        ;
 
         $this->createATicket([
             'requester_id' => $user->getId(),
@@ -116,10 +126,13 @@ class ZendeskService implements ZendeskServiceInterface
         string $message
     ): void
     {
-        $customFields = [];
-        $customFields[CustomFieldsValueObject::$type] = 'press';
-        $customFields[CustomFieldsValueObject::$hotelCity] = $city;
-        $customFields[CustomFieldsValueObject::$language] = $language->getName();
+        $customFields = $this->customFieldsBuilder
+            ->init()
+            ->addType(CustomFieldTypeEnum::Press)
+            ->addLanguage($language->getName())
+            ->addHotelCity($city)
+            ->build()
+        ;
 
         $this->createATicket([
             'requester_id' => $user->getId(),
@@ -141,9 +154,12 @@ class ZendeskService implements ZendeskServiceInterface
         string $message
     ): void
     {
-        $customFields = [];
-        $customFields[CustomFieldsValueObject::$type] = 'partner';
-        $customFields[CustomFieldsValueObject::$language] = $language->getName();
+        $customFields = $this->customFieldsBuilder
+            ->init()
+            ->addType(CustomFieldTypeEnum::Partner)
+            ->addLanguage($language->getName())
+            ->build()
+        ;
 
         $this->createATicket([
             'requester_id' => $user->getId(),
