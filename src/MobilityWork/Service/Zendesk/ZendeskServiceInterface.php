@@ -9,45 +9,44 @@ use MobilityWork\Model\Security\UserInterface;
 interface ZendeskServiceInterface
 {
     public function createCustomerTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
+        LanguageInterface $language,
+        UserInterface $user,
         string $message,
         string $reservationNumber,
-        LanguageInterface $language,
         ?HotelInterface $hotel,
     ): void;
 
     public function createHotelTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
+        LanguageInterface $language,
+        UserInterface $user,
         string $city,
-        string  $website,
         string $hotelName,
-        string $message,
-        LanguageInterface $language
+        string $message
     ): void;
 
     public function createPressTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
+        LanguageInterface $language,
+        UserInterface $user,
         string $city,
-        string $media,
-        string $message,
-        LanguageInterface $language
+        string $message
     ): void;
 
     public function createPartnersTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
-        string $message,
-        LanguageInterface $language
+        LanguageInterface $language,
+        UserInterface $user,
+        string $message
     ): void;
+
+    /**
+     * $userParams = [
+     *  'email' => string,
+     *  'name' => string,
+     *  'phone' => string,
+     *  'role' => string,
+     *  'user_fields' => [ 'website' => string, 'press_media' => string ]
+     * ]
+     * @param array $userParams
+     * @return UserInterface
+     */
+    public function createOrUpdateAUser(array $userParams): UserInterface;
 }

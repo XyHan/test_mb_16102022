@@ -2,7 +2,10 @@
 
 namespace MobilityWork\Service\Zendesk;
 
+use DomainException;
 use Exception;
+use MobilityWork\Client\Http\Zendesk\Strategy\TicketStrategy;
+use MobilityWork\Client\Http\Zendesk\Strategy\UserStrategy;
 use MobilityWork\Client\Http\Zendesk\ZendeskHttpClientInterface;
 use MobilityWork\Exception\NotFoundException;
 use MobilityWork\Lib\LoggerInterface;
@@ -10,6 +13,8 @@ use MobilityWork\Model\Booking\ReservationInterface;
 use MobilityWork\Model\Hotel\HotelContactInterface;
 use MobilityWork\Model\Hotel\HotelInterface;
 use MobilityWork\Model\LanguageInterface;
+use MobilityWork\Model\Security\UserInterface;
+use MobilityWork\Model\Security\UserModel;
 use MobilityWork\Repository\Reservation\ReservationRepositoryInterface;
 use MobilityWork\Service\HotelContacts\HotelContactsServiceInterface;
 
@@ -23,14 +28,11 @@ class ZendeskService implements ZendeskServiceInterface
     ) {}
 
     public function createCustomerTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
+        LanguageInterface $language,
+        UserInterface $user,
         string $message,
         string $reservationNumber,
-        LanguageInterface $language,
-        ?HotelInterface $hotel
+        ?HotelInterface $hotel,
     ): void
     {
         $reservation = null;
@@ -49,7 +51,7 @@ class ZendeskService implements ZendeskServiceInterface
 
         if ($hotel != null) {
             $hotelContact = $this->getHotelContactOrNull($hotel);
-            $customFields['80531267'] = $hotelContact != null ? $hotelContact->getEmail() : null;
+            $customFields['80531267'] = $hotelContact?->getEmail();
             $customFields['80918668'] = $hotel->getName();
             $customFields['80918648'] = $hotel->getAddress();
         }
@@ -64,41 +66,26 @@ class ZendeskService implements ZendeskServiceInterface
 
         $customFields['80918708'] = $language->getName();
 
-        $response = $this->client->users()->createOrUpdate(
-            [
-                'email' => $email,
-                'name' => $firstName.' '.strtoupper($lastName),
-                'phone' => !empty($phoneNumber)? $phoneNumber:($reservation != null ? $reservation->getCustomer()->getSimplePhoneNumber() : ''),
-                'role' => 'end-user'
-            ]
-        );
-
-        $this->client->tickets()->create(
-            [
-                'requester_id' => $response->user->id,
-                'subject'      => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
-                'comment' =>
-                    [
-                        'body'  => $message
-                    ],
-                'priority'      => 'normal',
-                'type'          => 'question',
-                'status'        => 'new',
-                'custom_fields' => $customFields
-            ]
-        );
+        $this->createATicket([
+            'requester_id' => $user->getId(),
+            'subject'      => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
+            'comment' =>
+                [
+                    'body'  => $message
+                ],
+            'priority'      => 'normal',
+            'type'          => 'question',
+            'status'        => 'new',
+            'custom_fields' => $customFields
+        ]);
     }
 
     public function createHotelTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
+        LanguageInterface $language,
+        UserInterface $user,
         string $city,
-        string  $website,
         string $hotelName,
-        string $message,
-        LanguageInterface $language
+        string $message
     ): void
     {
         $customFields = [];
@@ -107,41 +94,25 @@ class ZendeskService implements ZendeskServiceInterface
         $customFields['80918648'] = $city;
         $customFields['80918708'] = $language->getName();
 
-        $response = $this->client->users()->createOrUpdate(
-            [
-                'email' => $email,
-                'name' => $firstName.' '.strtoupper($lastName),
-                'phone' => $phoneNumber,
-                'role' => 'end-user',
-                'user_fields' => [ 'website' => $website ]
-            ]
-        );
-
-        $this->client->tickets()->create(
-            [
-                'requester_id' => $response->user->id,
-                'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
-                'comment' =>
-                    [
-                        'body' => $message
-                    ],
-                'priority' => 'normal',
-                'type' => 'question',
-                'status' => 'new',
-                'custom_fields' => $customFields
-            ]
-        );
+        $this->createATicket([
+            'requester_id' => $user->getId(),
+            'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
+            'comment' =>
+                [
+                    'body' => $message
+                ],
+            'priority' => 'normal',
+            'type' => 'question',
+            'status' => 'new',
+            'custom_fields' => $customFields
+        ]);
     }
 
     public function createPressTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
+        LanguageInterface $language,
+        UserInterface $user,
         string $city,
-        string $media,
-        string $message,
-        LanguageInterface $language
+        string $message
     ): void
     {
         $customFields = [];
@@ -149,72 +120,61 @@ class ZendeskService implements ZendeskServiceInterface
         $customFields['80918648'] = $city;
         $customFields['80918708'] = $language->getName();
 
-        $response = $this->client->users()->createOrUpdate(
-            [
-                'email' => $email,
-                'name' => $firstName.' '.strtoupper($lastName),
-                'phone' => $phoneNumber,
-                'role' => 'end-user',
-                'user_fields' => [ 'press_media' => $media ]
-            ]
-        );
-
-        try {
-            $this->client->tickets()->create(
+        $this->createATicket([
+            'requester_id' => $user->getId(),
+            'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
+            'comment' =>
                 [
-                    'requester_id' => $response->user->id,
-                    'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
-                    'comment' =>
-                        [
-                            'body' => $message
-                        ],
-                    'priority' => 'normal',
-                    'type' => 'question',
-                    'status' => 'new',
-                    'custom_fields' => $customFields
-                ]
-            );
-        } catch (\Exception $e) {
-            $this->getLogger()->addError(var_export($response->user->id, true));
-        }
+                    'body' => $message
+                ],
+            'priority' => 'normal',
+            'type' => 'question',
+            'status' => 'new',
+            'custom_fields' => $customFields
+        ]);
     }
 
     public function createPartnersTicket(
-        string $firstName,
-        string $lastName,
-        string $phoneNumber,
-        string $email,
-        string $message,
-        LanguageInterface $language
+        LanguageInterface $language,
+        UserInterface $user,
+        string $message
     ): void
     {
         $customFields = [];
         $customFields['80924888'] = 'partner';
         $customFields['80918708'] = $language->getName();
 
-        $response = $this->client->users()->createOrUpdate(
-            [
-                'email' => $email,
-                'name' => $firstName.' '.strtoupper($lastName),
-                'phone' => $phoneNumber,
-                'role' => 'end-user',
-            ]
-        );
+        $this->createATicket([
+            'requester_id' => $user->getId(),
+            'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
+            'comment' =>
+                [
+                    'body' => $message
+                ],
+            'priority' => 'normal',
+            'type' => 'question',
+            'status' => 'new',
+            'custom_fields' => $customFields
+        ]);
+    }
 
-        $this->client->tickets()->create(
-            [
-                'requester_id' => $response->user->id,
-                'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
-                'comment' =>
-                    [
-                        'body' => $message
-                    ],
-                'priority' => 'normal',
-                'type' => 'question',
-                'status' => 'new',
-                'custom_fields' => $customFields
-            ]
-        );
+    public function createOrUpdateAUser(array $userParams): UserInterface
+    {
+        try {
+            $response = $this->client->post($userParams, new UserStrategy());
+        } catch (Exception $e) {
+            $message = sprintf(
+                'User creation with email %s has failed. Previous: %s',
+                $userParams['email'],
+                $e->getMessage()
+            );
+            $this->logger->addError($message);
+            throw new ZendeskServiceException($message);
+        }
+
+        if (!$response->user->id) throw new DomainException(sprintf('Required id for user %s', $userParams['email']));
+
+        return (new UserModel())->setId($response->user->id);
     }
 
     private function getReservationOrException(string $reservationNumber): ReservationInterface
@@ -246,6 +206,21 @@ class ZendeskService implements ZendeskServiceInterface
             $message = sprintf(
                 'Get hotel %s contact has failed. Previous: %s',
                 $hotel->getName(),
+                $e->getMessage()
+            );
+            $this->logger->addError($message);
+            throw new ZendeskServiceException($message);
+        }
+    }
+
+    private function createATicket(array $params): void
+    {
+        try {
+            $this->client->post($params, new TicketStrategy());
+        } catch (Exception $e) {
+            $message = sprintf(
+                'Ticket creation with requester id %s has failed. Previous: %s',
+                $params['requester_id'],
                 $e->getMessage()
             );
             $this->logger->addError($message);
