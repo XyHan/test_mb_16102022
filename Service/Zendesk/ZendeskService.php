@@ -3,6 +3,7 @@
 namespace MobilityWork\Service\Zendesk;
 
 use Exception;
+use MobilityWork\Client\Http\Zendesk\ZendeskHttpClientInterface;
 use MobilityWork\Exception\NotFoundException;
 use MobilityWork\Lib\LoggerInterface;
 use MobilityWork\Model\Booking\ReservationInterface;
@@ -11,7 +12,6 @@ use MobilityWork\Model\Hotel\HotelInterface;
 use MobilityWork\Model\LanguageInterface;
 use MobilityWork\Repository\Reservation\ReservationRepositoryInterface;
 use MobilityWork\Service\HotelContacts\HotelContactsServiceInterface;
-use Zendesk\API\HttpClient as ZendeskAPI;
 
 class ZendeskService implements ZendeskServiceInterface
 {
@@ -19,6 +19,7 @@ class ZendeskService implements ZendeskServiceInterface
         private readonly ReservationRepositoryInterface $reservationRepository,
         private readonly LoggerInterface                $logger,
         private readonly HotelContactsServiceInterface  $hotelContactsService,
+        private readonly ZendeskHttpClientInterface     $client,
     ) {}
 
     public function createCustomerTicket(
@@ -63,13 +64,7 @@ class ZendeskService implements ZendeskServiceInterface
 
         $customFields['80918708'] = $language->getName();
 
-        $client = new ZendeskAPI($this->getServiceManager()->get('Config')['zendesk']['subdomain']);
-        $client->setAuth(
-            'basic',
-            ['username' => $this->getServiceManager()->get('Config')['zendesk']['username'], 'token' => $this->getServiceManager()->get('Config')['zendesk']['token']]
-        );
-
-        $response = $client->users()->createOrUpdate(
+        $response = $this->client->users()->createOrUpdate(
             [
                 'email' => $email,
                 'name' => $firstName.' '.strtoupper($lastName),
@@ -78,7 +73,7 @@ class ZendeskService implements ZendeskServiceInterface
             ]
         );
 
-        $client->tickets()->create(
+        $this->client->tickets()->create(
             [
                 'requester_id' => $response->user->id,
                 'subject'      => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
@@ -112,16 +107,7 @@ class ZendeskService implements ZendeskServiceInterface
         $customFields['80918648'] = $city;
         $customFields['80918708'] = $language->getName();
 
-        $client = new ZendeskAPI($this->getServiceManager()->get('Config')['zendesk']['subdomain']);
-        $client->setAuth(
-            'basic',
-            [
-                'username' => $this->getServiceManager()->get('Config')['zendesk']['username'],
-                'token' => $this->getServiceManager()->get('Config')['zendesk']['token']
-            ]
-        );
-
-        $response = $client->users()->createOrUpdate(
+        $response = $this->client->users()->createOrUpdate(
             [
                 'email' => $email,
                 'name' => $firstName.' '.strtoupper($lastName),
@@ -131,7 +117,7 @@ class ZendeskService implements ZendeskServiceInterface
             ]
         );
 
-        $client->tickets()->create(
+        $this->client->tickets()->create(
             [
                 'requester_id' => $response->user->id,
                 'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
@@ -163,16 +149,7 @@ class ZendeskService implements ZendeskServiceInterface
         $customFields['80918648'] = $city;
         $customFields['80918708'] = $language->getName();
 
-        $client = new ZendeskAPI($this->getServiceManager()->get('Config')['zendesk']['subdomain']);
-        $client->setAuth(
-            'basic',
-            [
-                'username' => $this->getServiceManager()->get('Config')['zendesk']['username'],
-                'token' => $this->getServiceManager()->get('Config')['zendesk']['token']
-            ]
-        );
-
-        $response = $client->users()->createOrUpdate(
+        $response = $this->client->users()->createOrUpdate(
             [
                 'email' => $email,
                 'name' => $firstName.' '.strtoupper($lastName),
@@ -183,7 +160,7 @@ class ZendeskService implements ZendeskServiceInterface
         );
 
         try {
-            $client->tickets()->create(
+            $this->client->tickets()->create(
                 [
                     'requester_id' => $response->user->id,
                     'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
@@ -215,16 +192,7 @@ class ZendeskService implements ZendeskServiceInterface
         $customFields['80924888'] = 'partner';
         $customFields['80918708'] = $language->getName();
 
-        $client = new ZendeskAPI($this->getServiceManager()->get('Config')['zendesk']['subdomain']);
-        $client->setAuth(
-            'basic',
-            [
-                'username' => $this->getServiceManager()->get('Config')['zendesk']['username'],
-                'token' => $this->getServiceManager()->get('Config')['zendesk']['token']
-            ]
-        );
-
-        $response = $client->users()->createOrUpdate(
+        $response = $this->client->users()->createOrUpdate(
             [
                 'email' => $email,
                 'name' => $firstName.' '.strtoupper($lastName),
@@ -233,7 +201,7 @@ class ZendeskService implements ZendeskServiceInterface
             ]
         );
 
-        $client->tickets()->create(
+        $this->client->tickets()->create(
             [
                 'requester_id' => $response->user->id,
                 'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
