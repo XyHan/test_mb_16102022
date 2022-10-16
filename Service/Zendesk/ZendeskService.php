@@ -2,12 +2,22 @@
 
 namespace MobilityWork\Service\Zendesk;
 
+use Exception;
+use MobilityWork\Exception\NotFoundException;
+use MobilityWork\Lib\LoggerInterface;
+use MobilityWork\Model\Booking\ReservationInterface;
 use MobilityWork\Model\Hotel\HotelInterface;
 use MobilityWork\Model\LanguageInterface;
+use MobilityWork\Repository\Reservation\ReservationRepositoryInterface;
 use Zendesk\API\HttpClient as ZendeskAPI;
 
 class ZendeskService implements ZendeskServiceInterface
 {
+    public function __construct(
+        private readonly ReservationRepositoryInterface $reservationRepository,
+        private readonly LoggerInterface                $logger,
+    ) {}
+
     public function createCustomerTicket(
         string $firstName,
         string $lastName,
@@ -15,19 +25,17 @@ class ZendeskService implements ZendeskServiceInterface
         string $email,
         string $message,
         string $reservationNumber,
-        HotelInterface $hotel,
-        LanguageInterface $language
+        LanguageInterface $language,
+        ?HotelInterface $hotel
     ): void
     {
         $reservation = null;
 
         if (!empty($reservationNumber)) {
-            $reservation = $this->getEntityRepository('Reservation')->getByRef($reservationNumber);
+            $reservation = $this->getReservationOrException($reservationNumber);
 
-            if ($reservation != null) {
-                if ($hotel == null) {
-                    $hotel = $reservation->getHotel();
-                }
+            if ($hotel == null) {
+                $hotel = $reservation->getHotel();
             }
         }
 
@@ -236,5 +244,26 @@ class ZendeskService implements ZendeskServiceInterface
                 'custom_fields' => $customFields
             ]
         );
+    }
+
+    private function getReservationOrException(string $reservationNumber): ReservationInterface
+    {
+        try {
+            $reservation = $this->reservationRepository->getByRef($reservationNumber);
+        } catch (Exception $exception) {
+            $message = sprintf(
+                'Get reservation %s has failed. Previous: %s',
+                $reservationNumber,
+                $exception->getMessage()
+            );
+            $this->logger->addError($message);
+            throw new ZendeskServiceException($message);
+        }
+
+        if (!$reservation) {
+            throw new NotFoundException(sprintf('Reservation %s not found', $reservationNumber));
+        }
+
+        return $reservation;
     }
 }

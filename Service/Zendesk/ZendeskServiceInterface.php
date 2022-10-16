@@ -15,8 +15,8 @@ interface ZendeskServiceInterface
         string $email,
         string $message,
         string $reservationNumber,
-        HotelInterface $hotel,
-        LanguageInterface $language
+        LanguageInterface $language,
+        ?HotelInterface $hotel,
     ): void;
 
     public function createHotelTicket(
