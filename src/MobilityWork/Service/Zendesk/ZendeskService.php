@@ -74,6 +74,9 @@ class ZendeskService implements ZendeskServiceInterface
             ;
         }
 
+        /**
+         * @Todo change params array with an object
+         */
         $this->createATicket([
             'requester_id' => $user->getId(),
             'subject'      => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
@@ -105,6 +108,9 @@ class ZendeskService implements ZendeskServiceInterface
             ->build()
         ;
 
+        /**
+         * @Todo change params array with an object
+         */
         $this->createATicket([
             'requester_id' => $user->getId(),
             'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
@@ -134,6 +140,9 @@ class ZendeskService implements ZendeskServiceInterface
             ->build()
         ;
 
+        /**
+         * @Todo change params array with an object
+         */
         $this->createATicket([
             'requester_id' => $user->getId(),
             'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
@@ -161,6 +170,9 @@ class ZendeskService implements ZendeskServiceInterface
             ->build()
         ;
 
+        /**
+         * @Todo change params array with an object
+         */
         $this->createATicket([
             'requester_id' => $user->getId(),
             'subject' => strlen($message) > 50 ? substr($message, 0, 50) . '...' : $message,
@@ -175,6 +187,9 @@ class ZendeskService implements ZendeskServiceInterface
         ]);
     }
 
+    /**
+     * @Todo change $userParams array with an object
+     */
     public function createOrUpdateAUser(array $userParams): UserInterface
     {
         try {
@@ -230,14 +245,14 @@ class ZendeskService implements ZendeskServiceInterface
         }
     }
 
-    private function createATicket(array $params): void
+    private function createATicket(array $ticketParams): void
     {
         try {
-            $this->client->post($params, new TicketStrategy());
+            $this->client->post($ticketParams, new TicketStrategy());
         } catch (Exception $e) {
             $message = sprintf(
                 'Ticket creation with requester id %s has failed. Previous: %s',
-                $params['requester_id'],
+                $ticketParams['requester_id'],
                 $e->getMessage()
             );
             $this->logger->addError($message);
